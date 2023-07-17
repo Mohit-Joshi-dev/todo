@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:collection/src/iterable_extensions.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:todolist/bloc/bloc.dart';
+import 'package:todolist/bloc/state.dart';
+
+import 'details.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -13,77 +17,38 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(),
-      body: Column(
-        children: [
-          TextField(
-            onSubmitted: (value) {
-              addTodo(value);
-            },
-          ),
-          ListView.builder(
-            shrinkWrap: true,
-            itemCount: _todos.length,
-            itemBuilder: (context, index) {
-              final todo = _todos[index];
-              return ListTile(
-                title: Text(
-                  todo.title,
-                  style: TextStyle(
-                    decoration:
-                        todo.isCompleted ? TextDecoration.lineThrough : null,
+      body: BlocBuilder<ProductsCubit, ProductState>(
+        builder: (context, state) {
+          if (state is ProductLoadingState) {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          } else if (state is ProductLoadedState) {
+            return ListView.builder(
+              itemCount: state.products.length,
+              itemBuilder: (context, index) {
+                return ListTile(
+                  title: Text(
+                    state.products[index].title,
                   ),
-                ),
-                trailing: Checkbox(
-                  value: todo.isCompleted,
-                  onChanged: (value) {
-                    taskCompleted(todo, value ?? false);
+                  onTap: () {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => BlocProvider<ProductsCubit>(
+                              create: (context) => ProductsCubit()
+                                ..getProductDetails(state.products[index].id),
+                              child: const ProductDetailPage()),
+                        ));
                   },
-                ),
-              );
-            },
-          ),
-        ],
+                );
+              },
+            );
+          } else {
+            return const SizedBox();
+          }
+        },
       ),
     );
   }
-
-  final List<Todo> _todos = [];
-
-  void addTodo(String text) {
-    _todos.insert(0, Todo(title: text));
-    setState(() {});
-  }
-
-  void taskCompleted(Todo todo, bool value) {
-    if (!value) {
-      final temp = _todos.lastWhereOrNull(
-        (element) => !element.isCompleted,
-      );
-
-      if (temp == null) {
-        _todos.remove(todo);
-        _todos.insert(0, todo);
-      } else {
-        final index = _todos.indexOf(temp);
-        _todos.remove(todo);
-        _todos.insert(index + 1, todo);
-      }
-    } else {
-      if (_todos.contains(todo)) {
-        _todos.remove(todo);
-        _todos.add(todo);
-      }
-    }
-
-    todo.isCompleted = value;
-
-    setState(() {});
-  }
-}
-
-class Todo {
-  final String title;
-  bool isCompleted;
-
-  Todo({required this.title, this.isCompleted = false});
 }
